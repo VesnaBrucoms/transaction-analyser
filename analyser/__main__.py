@@ -1,6 +1,35 @@
+"""Main entry point."""
 import json
 from os import listdir
 from sys import argv
+
+
+def read_json(directory, filename):
+    print(f"Reading {filename}")
+    file_path = f"{directory}\\{filename}"
+    content = open(file_path, "r", encoding="utf-8").readlines()
+    merged = ""
+    for line in content:
+        merged += line
+
+    return json.loads(merged)
+
+
+def build_transaction(raw_json):
+    transaction = {}
+    if "transactionMerchant" in raw_json.keys():
+        transaction["merchant_name"] = raw_json["transactionMerchant"]["name"]
+    else:
+        transaction["merchant_name"] = "No name given"
+    products = []
+    for product in raw_json["lineItem"]:
+        name = get_product_name(product)
+        price = get_product_price(product)
+        products.append({"name": name,
+                         "price": price})
+    transaction["products"] = products
+
+    return transaction
 
 
 def get_product_name(product):
@@ -33,27 +62,12 @@ if __name__ == "__main__":
         exit(1)
 
     merchants = {}
+    loops = 0
     for filename in listdir(argv[1]):
-        print(f"Reading {filename}")
-        content = open(argv[1] + "\\" + filename, "r", encoding="utf-8").readlines()
-        merged = ""
-        for line in content:
-            merged += line
+        loops += 1
+        content_json = read_json(argv[1], filename)
 
-        content_json = json.loads(merged)
-
-        transaction = {}
-        if "transactionMerchant" in content_json.keys():
-            transaction["merchant_name"] = content_json["transactionMerchant"]["name"]
-        else:
-            transaction["merchant_name"] = "No name given"
-        products = []
-        for product in content_json["lineItem"]:
-            name = get_product_name(product)
-            price = get_product_price(product)
-            products.append({"name": name,
-                             "price": price})
-        transaction["products"] = products
+        transaction = build_transaction(content_json)
 
         if transaction["merchant_name"] in merchants:
             merchants[transaction["merchant_name"]] += 1
@@ -66,4 +80,5 @@ if __name__ == "__main__":
             name = product["name"]
             price = product["price"]
             print(f"\t{name} - {price}")
+    print(f"{loops}")
     print(merchants)
